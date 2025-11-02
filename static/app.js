@@ -61,57 +61,21 @@ function toggleFilterPanel() {
     filterPanel.classList.toggle('active');
 }
 
-// API Configuration
-const API_BASE_URL = 'http://localhost:8000/api';
-// В продакшене заменить на реальный URL: const API_BASE_URL = 'https://your-domain.com/api';
+// Используем только локальные данные (моки) - без API и базы данных
 
-// Load notifications
+// Load notifications - используем только моки данных
 async function loadNotifications() {
     showLoading();
     
-    try {
-        const params = new URLSearchParams();
-        if (filters.type !== 'all') {
-            params.append('type', filters.type);
-        }
-        if (filters.manager !== 'all') {
-            params.append('user_id', filters.manager);
-        }
-        
-        const url = `${API_BASE_URL}/notifications?${params.toString()}`;
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        notifications = data.notifications.map(notif => ({
-            id: notif.id,
-            type: notif.type,
-            title: notif.title,
-            description: notif.description,
-            user: notif.user_name,
-            userId: notif.user_id,
-            timestamp: notif.timestamp,
-            read: notif.status === 'read',
-            details: notif.details ? Object.values(notif.details).slice(0, 3) : []
-        }));
-        
-        renderNotifications();
-        updateStats();
-    } catch (error) {
-        console.error('Error loading notifications:', error);
-        showError('Ошибка загрузки уведомлений');
-        // Fallback to mock data for development
-        if (notifications.length === 0) {
-            notifications = getMockNotifications();
-            renderNotifications();
-            updateStats();
-        }
-    } finally {
-        hideLoading();
-    }
+    // Имитация загрузки
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Используем моки данных
+    notifications = getMockNotifications();
+    
+    renderNotifications();
+    updateStats();
+    hideLoading();
 }
 
 // Render notifications
@@ -243,48 +207,20 @@ function groupNotificationsByTime(notifications) {
     return groups;
 }
 
-// Update stats
-async function updateStats() {
-    try {
-        const url = `${API_BASE_URL}/stats`;
-        const response = await fetch(url);
-        
-        if (response.ok) {
-            const stats = await response.json();
-            totalCountEl.textContent = stats.total;
-            unreadCountEl.textContent = stats.unread;
-            todayCountEl.textContent = stats.today;
-        } else {
-            // Fallback to local calculation
-            const filtered = applyFiltersToNotifications();
-            const unread = filtered.filter(n => !n.read).length;
-            const today = filtered.filter(n => {
-                const date = new Date(n.timestamp);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                return date >= today;
-            }).length;
-            
-            totalCountEl.textContent = filtered.length;
-            unreadCountEl.textContent = unread;
-            todayCountEl.textContent = today;
-        }
-    } catch (error) {
-        console.error('Error loading stats:', error);
-        // Fallback
-        const filtered = applyFiltersToNotifications();
-        const unread = filtered.filter(n => !n.read).length;
-        const today = filtered.filter(n => {
-            const date = new Date(n.timestamp);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            return date >= today;
-        }).length;
-        
-        totalCountEl.textContent = filtered.length;
-        unreadCountEl.textContent = unread;
-        todayCountEl.textContent = today;
-    }
+// Update stats - локальный расчет из моков
+function updateStats() {
+    const filtered = applyFiltersToNotifications();
+    const unread = filtered.filter(n => !n.read).length;
+    const today = filtered.filter(n => {
+        const date = new Date(n.timestamp);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return date >= today;
+    }).length;
+    
+    totalCountEl.textContent = filtered.length;
+    unreadCountEl.textContent = unread;
+    todayCountEl.textContent = today;
 }
 
 // Clear filters
@@ -306,31 +242,12 @@ function applyFilters() {
     toggleFilterPanel();
 }
 
-// Mark notification as read
-async function markAsRead(id) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (response.ok) {
-            const notification = notifications.find(n => n.id === id);
-            if (notification) {
-                notification.read = true;
-            }
-        } else {
-            console.error('Failed to mark notification as read');
-        }
-    } catch (error) {
-        console.error('Error marking notification as read:', error);
-        // Update locally anyway
-        const notification = notifications.find(n => n.id === id);
-        if (notification) {
-            notification.read = true;
-        }
+// Mark notification as read - локальное обновление
+function markAsRead(id) {
+    const notification = notifications.find(n => n.id === id);
+    if (notification) {
+        notification.read = true;
+        updateStats();
     }
 }
 

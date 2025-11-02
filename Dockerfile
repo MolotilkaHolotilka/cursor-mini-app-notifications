@@ -3,18 +3,21 @@ FROM python:3.11-slim
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Устанавливаем только необходимые зависимости (FastAPI для статики)
-RUN pip install --no-cache-dir fastapi uvicorn[standard]
+# Копируем requirements.txt и устанавливаем зависимости
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем упрощенный main.py
+# Копируем весь код приложения
 COPY main.py .
-
-# Копируем статические файлы
+COPY database.py .
+COPY models.py .
+COPY services.py .
+COPY routers/ ./routers/
 COPY static/ ./static/
 
 # Открываем порт
 EXPOSE 8000
 
-# Запускаем упрощенное приложение (только статика)
+# Запускаем приложение
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 

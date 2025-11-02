@@ -11,6 +11,29 @@ if (tg) {
     }
 }
 
+// API Configuration
+// Автоматическое определение API URL
+const API_BASE_URL = window.API_BASE_URL || (() => {
+    // Локальная разработка
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:8000/api';
+    }
+    
+    // Если фронтенд на GitHub Pages - используем отдельный API домен
+    // Если фронтенд и API на одном домене (Coolify) - используем относительный путь
+    const hostname = window.location.hostname;
+    
+    // GitHub Pages (статический хостинг) - нужен отдельный API сервер
+    if (hostname.includes('github.io')) {
+        // TODO: Замените на реальный URL вашего API сервера на Coolify
+        return 'https://your-coolify-api-domain.com/api';
+    }
+    
+    // Если фронтенд и API на одном домене (Coolify) - используем относительный путь
+    // Это работает когда фронтенд обслуживается через FastAPI
+    return '/api';
+})();
+
 // State
 let notifications = [];
 let filters = {
@@ -51,9 +74,9 @@ document.querySelectorAll('.chip').forEach(chip => {
 });
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    loadNotifications();
-    setupMockData(); // Remove this in production
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadNotifications();
+    await loadManagers(); // Загружаем менеджеров из API
 });
 
 // Toggle filter panel
@@ -61,21 +84,56 @@ function toggleFilterPanel() {
     filterPanel.classList.toggle('active');
 }
 
-// Используем только локальные данные (моки) - без API и базы данных
-
-// Load notifications - используем только моки данных
+// Load notifications - загрузка с API
 async function loadNotifications() {
     showLoading();
     
-    // Имитация загрузки
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Используем моки данных
-    notifications = getMockNotifications();
-    
-    renderNotifications();
-    updateStats();
-    hideLoading();
+    try {
+        // Формируем query параметры
+        const params = new URLSearchParams();
+        if (filters.type !== 'all') {
+            params.append('type', filters.type);
+        }
+        if (filters.manager !== 'all') {
+            params.append('user_id', filters.manager);
+        }
+        params.append('limit', '100');
+        params.append('offset', '0');
+        
+        const url = `${API_BASE_URL}/notifications?${params.toString()}`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Преобразуем данные API в формат для фронтенда
+        notifications = data.notifications.map(n => ({
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            description: n.description,
+            user: n.user_name,
+            userId: n.user_id,
+            timestamp: new Date(n.timestamp).getTime(),
+            read: n.status === 'read',
+            details: n.details ? Object.values(n.details) : []
+        }));
+        
+        renderNotifications();
+        await loadStats();
+        hideLoading();
+    } catch (error) {
+        console.error('Ошибка загрузки уведомлений:', error);
+        showError('Не удалось загрузить уведомления. Проверьте подключение к API.');
+        // Fallback на моки в случае ошибки
+        notifications = getMockNotifications();
+        renderNotifications();
+        updateStats();
+        hideLoading();
+    }
 }
 
 // Render notifications
@@ -144,11 +202,10 @@ function createNotificationElement(notification) {
     }
     
     // Click handler
-    el.addEventListener('click', () => {
-        markAsRead(notification.id);
+    el.addEventListener('click', async () => {
+        await markAsRead(notification.id);
         el.classList.remove('unread');
         el.querySelector('.notification-badge').style.display = 'none';
-        updateStats();
     });
     
     return el;
@@ -207,7 +264,37 @@ function groupNotificationsByTime(notifications) {
     return groups;
 }
 
-// Update stats - локальный расчет из моков
+// Load stats from API
+async function loadStats() {
+    try {
+        const params = new URLSearchParams();
+        if (filters.manager !== 'all') {
+            params.append('user_id', filters.manager);
+        }
+        
+        const url = `${API_BASE_URL}/stats${params.toString() ? '?' + params.toString() : ''}`;
+        const response = await fetch(url);
+        
+        if (response.ok) {
+            const stats = await response.json();
+            totalCountEl.textContent = stats.total;
+            unreadCountEl.textContent = stats.unread;
+            todayCountEl.textContent = stats.today;
+            
+            // Обновляем список менеджеров из статистики
+            if (stats.by_user && Object.keys(stats.by_user).length > 0) {
+                updateManagerFilter(Object.keys(stats.by_user));
+            }
+        } else {
+            updateStats(); // Fallback на локальный расчет
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки статистики:', error);
+        updateStats(); // Fallback на локальный расчет
+    }
+}
+
+// Update stats - локальный расчет (fallback)
 function updateStats() {
     const filtered = applyFiltersToNotifications();
     const unread = filtered.filter(n => !n.read).length;
@@ -242,10 +329,30 @@ function applyFilters() {
     toggleFilterPanel();
 }
 
-// Mark notification as read - локальное обновление
-function markAsRead(id) {
+// Mark notification as read - обновление через API
+async function markAsRead(id) {
     const notification = notifications.find(n => n.id === id);
-    if (notification) {
+    if (!notification) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            notification.read = true;
+            await loadStats();
+        } else {
+            // Если API не работает, обновляем локально
+            notification.read = true;
+            updateStats();
+        }
+    } catch (error) {
+        console.error('Ошибка обновления статуса:', error);
+        // Fallback на локальное обновление
         notification.read = true;
         updateStats();
     }
@@ -289,8 +396,13 @@ function hideLoading() {
 }
 
 function showError(message) {
-    // TODO: Show error message to user
     console.error(message);
+    // Показываем уведомление пользователю (можно улучшить UI)
+    if (tg?.showAlert) {
+        tg.showAlert(message);
+    } else {
+        alert(message);
+    }
 }
 
 // Mock data (remove in production)
@@ -357,8 +469,50 @@ function getMockNotifications() {
     ];
 }
 
-function setupMockData() {
-    // Populate manager filter
+// Load managers from API stats
+async function loadManagers() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/stats`);
+        if (response.ok) {
+            const stats = await response.json();
+            if (stats.by_user && Object.keys(stats.by_user).length > 0) {
+                updateManagerFilter(Object.keys(stats.by_user));
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки менеджеров:', error);
+    }
+    
+    // Fallback на моки если API недоступен
+    setupMockManagers();
+}
+
+function updateManagerFilter(managerNames) {
+    // Очищаем существующие опции (кроме "Все менеджеры")
+    while (managerFilter.children.length > 1) {
+        managerFilter.removeChild(managerFilter.lastChild);
+    }
+    
+    // Добавляем менеджеров из статистики
+    // Нужно получить user_id для каждого менеджера из уведомлений
+    const managerMap = new Map();
+    notifications.forEach(n => {
+        if (!managerMap.has(n.userId)) {
+            managerMap.set(n.userId, n.user);
+        }
+    });
+    
+    managerMap.forEach((name, userId) => {
+        const option = document.createElement('option');
+        option.value = userId;
+        option.textContent = name;
+        managerFilter.appendChild(option);
+    });
+}
+
+function setupMockManagers() {
+    // Populate manager filter (fallback)
     const managers = [
         { id: 'manager_a', name: 'Менеджер А' },
         { id: 'manager_b', name: 'Менеджер Б' },

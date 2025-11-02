@@ -25,8 +25,8 @@ const API_BASE_URL = window.API_BASE_URL || (() => {
     
     // GitHub Pages (статический хостинг) - нужен отдельный API сервер
     if (hostname.includes('github.io')) {
-        // TODO: Замените на реальный URL вашего API сервера на Coolify
-        return 'https://your-coolify-api-domain.com/api';
+        // API сервер на Coolify
+        return 'http://q84oskg0cs044ogwkok0os04.91.107.212.137.sslip.io/api';
     }
     
     // Если фронтенд и API на одном домене (Coolify) - используем относительный путь

@@ -27,6 +27,10 @@ class NotificationCreate(BaseModel):
     source: str = Field(default="airtable", description="Источник события")
     details: Optional[dict] = Field(default=None, description="Дополнительные детали")
     event_metadata: Optional[dict] = Field(default=None, alias="metadata", description="Метаданные события")
+    
+    class Config:
+        populate_by_name = True  # Позволяет использовать как alias, так и имя поля
+        extra = "ignore"  # Игнорировать лишние поля (id, status, timestamp)
 
 class NotificationUpdate(BaseModel):
     """Модель для обновления уведомления"""
@@ -55,7 +59,7 @@ class NotificationResponse(BaseModel):
     status: NotificationStatus
     timestamp: datetime
     details: Optional[dict] = None
-    event_metadata: Optional[dict] = Field(default=None, alias="metadata", serialization_alias="metadata")
+    metadata: Optional[dict] = Field(default=None, alias="event_metadata", serialization_alias="metadata")
     
     model_config = {"from_attributes": True, "populate_by_name": True}
 

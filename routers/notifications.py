@@ -35,24 +35,38 @@ async def get_notifications(
     - `limit`: Количество записей (1-1000)
     - `offset`: Смещение для пагинации
     """
-    filters = NotificationFilter(
-        type=type,
-        user_id=user_id,
-        status=status,
-        limit=limit,
-        offset=offset
-    )
-    
-    notifications, total = await NotificationService.get_notifications(db, filters)
-    
-    return {
-        "notifications": [
-            NotificationResponse.model_validate(n) for n in notifications
-        ],
-        "total": total,
-        "limit": limit,
-        "offset": offset
-    }
+    try:
+        filters = NotificationFilter(
+            type=type,
+            user_id=user_id,
+            status=status,
+            limit=limit,
+            offset=offset
+        )
+        
+        notifications, total = await NotificationService.get_notifications(db, filters)
+        
+        # Преобразуем уведомления в ответ, обрабатывая возможные ошибки
+        notifications_list = []
+        for n in notifications:
+            try:
+                notifications_list.append(NotificationResponse.model_validate(n))
+            except Exception as e:
+                # Логируем ошибку преобразования отдельного уведомления
+                print(f"Ошибка преобразования уведомления {n.id}: {e}")
+                continue
+        
+        return {
+            "notifications": notifications_list,
+            "total": total or 0,
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при получении уведомлений: {str(e)}"
+        )
 
 @router.get("/{notification_id}", response_model=NotificationResponse)
 async def get_notification(
@@ -91,8 +105,14 @@ async def create_notification(
     }
     ```
     """
-    notification = await NotificationService.create_notification(db, notification_data)
-    return NotificationResponse.model_validate(notification)
+    try:
+        notification = await NotificationService.create_notification(db, notification_data)
+        return NotificationResponse.model_validate(notification)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при создании уведомления: {str(e)}"
+        )
 
 @router.patch("/{notification_id}", response_model=NotificationResponse)
 async def update_notification(

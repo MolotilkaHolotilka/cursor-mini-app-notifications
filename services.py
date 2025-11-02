@@ -23,23 +23,27 @@ class NotificationService:
         notification_data: NotificationCreate
     ) -> Notification:
         """Создать новое уведомление"""
-        notification = Notification(
-            type=notification_data.type,
-            title=notification_data.title,
-            description=notification_data.description,
-            user_id=notification_data.user_id,
-            user_name=notification_data.user_name,
-            source=notification_data.source,
-            details=notification_data.details,
-            event_metadata=notification_data.event_metadata,
-            status=NotificationStatus.UNREAD,
-            timestamp=datetime.utcnow()
-        )
-        
-        db.add(notification)
-        await db.commit()
-        await db.refresh(notification)
-        return notification
+        try:
+            notification = Notification(
+                type=notification_data.type,
+                title=notification_data.title,
+                description=notification_data.description,
+                user_id=notification_data.user_id,
+                user_name=notification_data.user_name,
+                source=notification_data.source,
+                details=notification_data.details,
+                event_metadata=notification_data.event_metadata,
+                status=NotificationStatus.UNREAD,
+                timestamp=datetime.utcnow()
+            )
+            
+            db.add(notification)
+            await db.commit()
+            await db.refresh(notification)
+            return notification
+        except Exception as e:
+            await db.rollback()
+            raise
     
     @staticmethod
     async def get_notifications(
@@ -47,45 +51,52 @@ class NotificationService:
         filters: NotificationFilter
     ) -> tuple[List[Notification], int]:
         """Получить список уведомлений с фильтрацией"""
-        query = select(Notification)
-        count_query = select(func.count(Notification.id))
-        
-        # Применяем фильтры
-        conditions = []
-        
-        if filters.type:
-            conditions.append(Notification.type == filters.type)
-        
-        if filters.user_id:
-            conditions.append(Notification.user_id == filters.user_id)
-        
-        if filters.status:
-            conditions.append(Notification.status == filters.status)
-        
-        if filters.start_date:
-            conditions.append(Notification.timestamp >= filters.start_date)
-        
-        if filters.end_date:
-            conditions.append(Notification.timestamp <= filters.end_date)
-        
-        if conditions:
-            query = query.where(and_(*conditions))
-            count_query = count_query.where(and_(*conditions))
-        
-        # Сортировка по времени (новые сначала)
-        query = query.order_by(Notification.timestamp.desc())
-        
-        # Пагинация
-        query = query.offset(filters.offset).limit(filters.limit)
-        
-        # Выполняем запросы
-        result = await db.execute(query)
-        notifications = result.scalars().all()
-        
-        count_result = await db.execute(count_query)
-        total = count_result.scalar()
-        
-        return notifications, total
+        try:
+            query = select(Notification)
+            count_query = select(func.count(Notification.id))
+            
+            # Применяем фильтры
+            conditions = []
+            
+            if filters.type:
+                conditions.append(Notification.type == filters.type)
+            
+            if filters.user_id:
+                conditions.append(Notification.user_id == filters.user_id)
+            
+            if filters.status:
+                conditions.append(Notification.status == filters.status)
+            
+            if filters.start_date:
+                conditions.append(Notification.timestamp >= filters.start_date)
+            
+            if filters.end_date:
+                conditions.append(Notification.timestamp <= filters.end_date)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+                count_query = count_query.where(and_(*conditions))
+            
+            # Сортировка по времени (новые сначала)
+            query = query.order_by(Notification.timestamp.desc())
+            
+            # Пагинация
+            query = query.offset(filters.offset).limit(filters.limit)
+            
+            # Выполняем запросы
+            result = await db.execute(query)
+            notifications = result.scalars().all()
+            
+            count_result = await db.execute(count_query)
+            total = count_result.scalar() or 0
+            
+            return list(notifications), total
+        except Exception as e:
+            # Логируем ошибку для отладки
+            print(f"Ошибка при получении уведомлений: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
     
     @staticmethod
     async def get_notification(

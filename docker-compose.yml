@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: notification-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./notifications.db
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - ./notifications.db:/app/notifications.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+

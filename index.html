@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2481cc">
+    <title>Система уведомлений</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="header-title">
+                <span class="icon">🔔</span>
+                Уведомления
+            </h1>
+            <div class="header-actions">
+                <button class="btn-icon" id="filterBtn" title="Фильтры">
+                    <span class="icon">🔍</span>
+                </button>
+                <button class="btn-icon" id="refreshBtn" title="Обновить">
+                    <span class="icon">🔄</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Filter Panel -->
+        <div class="filter-panel" id="filterPanel">
+            <div class="filter-content">
+                <h3>Фильтры</h3>
+                <div class="filter-group">
+                    <label>Тип события:</label>
+                    <div class="filter-chips">
+                        <button class="chip active" data-filter="all">Все</button>
+                        <button class="chip" data-filter="file_upload">Загрузка файлов</button>
+                        <button class="chip" data-filter="record_create">Создание записей</button>
+                        <button class="chip" data-filter="record_update">Обновление записей</button>
+                        <button class="chip" data-filter="user_action">Действия пользователей</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Менеджер:</label>
+                    <select class="filter-select" id="managerFilter">
+                        <option value="all">Все менеджеры</option>
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn-secondary" id="clearFilters">Сбросить</button>
+                    <button class="btn-primary" id="applyFilters">Применить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-value" id="totalCount">0</span>
+                <span class="stat-label">Всего</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="unreadCount">0</span>
+                <span class="stat-label">Непрочитанных</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="todayCount">0</span>
+                <span class="stat-label">Сегодня</span>
+            </div>
+        </div>
+
+        <!-- Notifications List -->
+        <div class="notifications-container" id="notificationsContainer">
+            <!-- Notifications will be loaded here -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">📭</div>
+                <div class="empty-text">Нет уведомлений</div>
+            </div>
+
+            <!-- Loading state -->
+            <div class="loading-state" id="loadingState">
+                <div class="spinner"></div>
+                <div>Загрузка...</div>
+            </div>
+        </div>
+
+        <!-- Notification Template (hidden, used as template) -->
+        <div class="notification-item template" id="notificationTemplate" style="display: none;">
+            <div class="notification-content">
+                <div class="notification-header">
+                    <div class="notification-icon">
+                        <span class="icon"></span>
+                    </div>
+                    <div class="notification-info">
+                        <div class="notification-title"></div>
+                        <div class="notification-meta">
+                            <span class="notification-user"></span>
+                            <span class="notification-time"></span>
+                        </div>
+                    </div>
+                    <div class="notification-badge unread" style="display: none;"></div>
+                </div>
+                <div class="notification-body">
+                    <div class="notification-description"></div>
+                    <div class="notification-details"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

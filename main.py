@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,9 +22,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS настройки для GitHub Pages и Telegram WebApp
+# CORS настройки для Telegram WebApp
 allowed_origins = [
-    "https://molotilkaholotilka.github.io",
     "https://notification.rybushk.in",
     "https://web.telegram.org",
     "http://localhost:8000",
@@ -50,9 +49,20 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["not
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
 
-# Статические файлы (CSS, JS)
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+# Статические файлы - отдаём файлы из корня и из static/
+# Сначала пробуем из корня, потом из static/
+
+# Функция для отдачи статического файла
+async def serve_static_file(filename: str):
+    """Отдаёт статический файл из корня или static/"""
+    # Сначала пробуем корень
+    if os.path.exists(filename):
+        return FileResponse(filename)
+    # Потом static/
+    static_path = f"static/{filename}"
+    if os.path.exists(static_path):
+        return FileResponse(static_path)
+    raise HTTPException(status_code=404, detail=f"{filename} not found")
 
 # Health check для Coolify
 @app.get("/health")
@@ -75,6 +85,19 @@ async def index():
     elif os.path.exists("index.html"):
         return FileResponse("index.html")
     return {"message": "index.html not found"}
+
+# Отдаём статические файлы (app.js, styles.css) из корня или static/
+@app.get("/app.js", include_in_schema=False)
+async def app_js():
+    return await serve_static_file("app.js")
+
+@app.get("/styles.css", include_in_schema=False)
+async def styles_css():
+    return await serve_static_file("styles.css")
+
+# Статические файлы из папки static (для совместимости)
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
     import uvicorn

@@ -13,6 +13,11 @@ COPY database.py .
 COPY models.py .
 COPY services.py .
 COPY routers/ ./routers/
+
+# Копируем статические файлы (из корня и из static/)
+COPY index.html .
+COPY app.js .
+COPY styles.css .
 COPY static/ ./static/
 
 # Открываем порт

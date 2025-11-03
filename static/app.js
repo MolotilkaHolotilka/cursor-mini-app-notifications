@@ -12,26 +12,14 @@ if (tg) {
 }
 
 // API Configuration
-// Автоматическое определение API URL
+// Всё работает на одном домене - используем относительный путь
 const API_BASE_URL = window.API_BASE_URL || (() => {
     // Локальная разработка
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         return 'http://localhost:8000/api';
     }
     
-    // Если фронтенд на GitHub Pages - используем отдельный API домен
-    // Если фронтенд и API на одном домене (Coolify) - используем относительный путь
-    const hostname = window.location.hostname;
-    
-    // GitHub Pages (статический хостинг) - нужен отдельный API сервер
-    if (hostname.includes('github.io')) {
-        // API сервер на вашем домене
-        return 'https://notification.rybushk.in/api';
-    }
-    
-    // Если фронтенд и API на одном домене (Coolify) - используем относительный путь
-    // Это работает когда фронтенд обслуживается через FastAPI
-    // Например: notification.rybushk.in - используем /api
+    // На сервере фронтенд и API на одном домене - используем относительный путь
     return '/api';
 })();
 

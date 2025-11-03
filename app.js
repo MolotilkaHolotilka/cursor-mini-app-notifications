@@ -25,12 +25,13 @@ const API_BASE_URL = window.API_BASE_URL || (() => {
     
     // GitHub Pages (статический хостинг) - нужен отдельный API сервер
     if (hostname.includes('github.io')) {
-        // API сервер на Coolify
-        return 'http://q84oskg0cs044ogwkok0os04.91.107.212.137.sslip.io/api';
+        // API сервер на вашем домене
+        return 'https://notification.rybushk.in/api';
     }
     
     // Если фронтенд и API на одном домене (Coolify) - используем относительный путь
     // Это работает когда фронтенд обслуживается через FastAPI
+    // Например: notification.rybushk.in - используем /api
     return '/api';
 })();
 

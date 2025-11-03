@@ -25,6 +25,7 @@ app = FastAPI(
 # CORS настройки для GitHub Pages и Telegram WebApp
 allowed_origins = [
     "https://molotilkaholotilka.github.io",
+    "https://notification.rybushk.in",
     "https://web.telegram.org",
     "http://localhost:8000",
     "http://localhost:3000",
